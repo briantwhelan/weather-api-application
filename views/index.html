@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link rel="icon" type="image/x-icon" href="../images/favicon.png">
+    <title>Weather</title>
+  </head>
+  <body>
+    <div id="app">
+        <h1>Welcome to the Random Number Generator</h1>
+        Please enter a minimum and a maximum as the range of the Random Number
+        <br>
+        Minimum: <input v-model="randMin"> <input v-model="randMax"> <br><br>
+        <button v-on:click="GetRand">Generate Random Number</button>
+        between {{randMin}} and {{randMax}}
+        <br> Latest Random Number is {{random}}
+        <span v-if="history.length>0">
+            <hr>
+            <h1>History of Numbers generated</h1>
+            <ul>
+                <li v-for="num in history">{{num}}</li>
+            </ul>
+        </span>
+    </div>
+  </body>
+  <script type = "text/JavaScript">
+    var app = new Vue({
+    el:"#app",
+    data:{
+        randMin: 1,
+        randMax: 10,
+        random: -1,
+        history :[]
+    },
+    methods:{
+        GetRand : getRandom 
+    }
+    })
+
+    function getRandom (){
+        console.log("getRandom called")
+        let prom = fetch("http://localhost:3000/random/1/10")
+        prom.then( response => response.json())
+        .then (response =>
+        { this.random = response.result
+        this.history.push(response.result)
+    })}
+  </script>
+</html>
