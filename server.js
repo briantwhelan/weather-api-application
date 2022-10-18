@@ -3,8 +3,8 @@
 // Require dependencies.
 const express = require("express");
 const fetch = require("node-fetch");
-//const cors = require("cors");
-//const path = require("path");
+const cors = require("cors");
+const path = require("path");
 
 // Use dotenv package to import API key from .env file.
 require("dotenv").config();
@@ -12,12 +12,12 @@ const apiKey = `${process.env.API_KEY}`;
 
 // Create express app.
 const app = express();
-const port = 3000;
-app.use(express.static("public"));
-// let publicPath = path.resolve(__dirname, "public");
+const port = 5500;
+//app.use(express.static("public"));
+let publicPath = path.resolve(__dirname, "public");
 // console.log(publicPath);
-// app.use(express.static(publicPath));
-// app.use(cors());
+app.use(express.static(publicPath));
+app.use(cors());
 
 // Register routes.
 app.get("/", (req, res) => {
@@ -30,6 +30,7 @@ app.listen(port, () => console.log(`Listening on port ${port}...`));
 
 async function getWeatherForecast(req, res) {
   let city = req.params.city;
+  console.log(`Request received for ${city}.`);
   const coords = await getCoordinates(city);
   const forecast = await get5Day3HourForecast(coords);
   const airPollution = await getAirPollution(coords);
@@ -51,7 +52,6 @@ async function getWeatherForecast(req, res) {
   });
 
   let airPollutionData = [];
-  console.log(Object.keys(airPollution.list).length);
   Object.keys(airPollution.list).forEach(function (index) {
     let interval = airPollution.list[index];
     airPollutionData.push({
@@ -64,16 +64,16 @@ async function getWeatherForecast(req, res) {
     weatherData: weatherData,
     airPollutionData: airPollutionData,
   };
-  console.log(clientData);
+  //console.log(clientData);
   res.status(200).json(clientData);
 }
 
 async function getCoordinates(city) {
   const response = await fetch(
-    `http://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.API_KEY}`
+    `http://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${process.env.API_KEY}`
   );
   const data = await response.json();
-  return [data.coord.lat, data.coord.lon];
+  return [data[0].lat, data[0].lon];
 }
 
 async function get5Day3HourForecast(coords) {

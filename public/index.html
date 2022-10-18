@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link rel="icon" type="image/x-icon" href="../images/favicon.png">
+    <title>Weather</title>
+  </head>
+  <body>
+    <div id="app">
+        <h1>Weather App</h1>
+        Please enter a city to check the weather forecast
+        <br>
+        Minimum: <input v-model="city"> <br><br>
+        <button v-on:click="GetCityWeather">Submit</button>
+        <span>{{response}}</span>
+    </div>
+  </body>
+  <script type = "text/JavaScript">
+    var app = new Vue({
+    el:"#app",
+    data:{
+        city: "",
+        response: {},
+    },
+    methods:{
+        GetCityWeather : getCityWeather 
+    }
+    })
+
+    function getCityWeather (){
+        console.log("getCityWeather called")
+        let prom = fetch("http://localhost:5500/weather/" + this.city)
+        prom.then( response => response.json())
+        .then (response =>
+        { this.response = response
+        })
+    }
+  </script>
+</html>
