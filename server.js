@@ -31,41 +31,45 @@ app.listen(port, () => console.log(`Listening on port ${port}...`));
 async function getWeatherForecast(req, res) {
   let city = req.params.city;
   console.log(`Request received for ${city}.`);
-  const coords = await getCoordinates(city);
-  const forecast = await get5Day3HourForecast(coords);
-  const airPollution = await getAirPollution(coords);
+  try {
+    const coords = await getCoordinates(city);
+    const forecast = await get5Day3HourForecast(coords);
+    const airPollution = await getAirPollution(coords);
 
-  let weatherData = [];
-  Object.keys(forecast.list).forEach(function (index) {
-    let interval = forecast.list[index];
-    let rainfallLevel = interval.rain;
-    if (rainfallLevel !== undefined) {
-      rainfallLevel = interval.rain["3h"];
-    }
-    weatherData.push({
-      time: interval.dt,
-      weatherDescription: interval.weather.main,
-      temperature: interval.main.temp,
-      windSpeed: interval.wind.speed,
-      rainfallLevel: rainfallLevel,
+    let weatherData = [];
+    Object.keys(forecast.list).forEach(function (index) {
+      let interval = forecast.list[index];
+      let rainfallLevel = interval.rain;
+      if (rainfallLevel !== undefined) {
+        rainfallLevel = interval.rain["3h"];
+      }
+      weatherData.push({
+        time: interval.dt,
+        weatherDescription: interval.weather.main,
+        temperature: interval.main.temp,
+        windSpeed: interval.wind.speed,
+        rainfallLevel: rainfallLevel,
+      });
     });
-  });
 
-  let airPollutionData = [];
-  Object.keys(airPollution.list).forEach(function (index) {
-    let interval = airPollution.list[index];
-    airPollutionData.push({
-      time: interval.dt,
-      pm2_5: interval.components.pm2_5,
+    let airPollutionData = [];
+    Object.keys(airPollution.list).forEach(function (index) {
+      let interval = airPollution.list[index];
+      airPollutionData.push({
+        time: interval.dt,
+        pm2_5: interval.components.pm2_5,
+      });
     });
-  });
 
-  let clientData = {
-    weatherData: weatherData,
-    airPollutionData: airPollutionData,
-  };
-  //console.log(clientData);
-  res.status(200).json(clientData);
+    let clientData = {
+      weatherData: weatherData,
+      airPollutionData: airPollutionData,
+    };
+    //console.log(clientData);
+    res.status(200).json(clientData);
+  } catch (e) {
+    res.status(400).json({ error: "Bad Request." });
+  }
 }
 
 async function getCoordinates(city) {
