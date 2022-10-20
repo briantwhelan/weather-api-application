@@ -4,16 +4,31 @@
     <meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <link rel="icon" type="image/x-icon" href="../images/favicon.png">
-    <title>Weather</title>
+    <title>WheatherMan</title>
   </head>
   <body>
     <div id="app">
-        <h1>Weather App</h1>
-        Please enter a city to check the weather forecast
-        <br>
-        Minimum: <input v-model="city"> <br><br>
+        <h1>WheatherMan</h1>
+        <p>Find out whether you should bring that umbrella (or that mask)...</p>
+        <input v-model="city" placeholder="City">
+        <br><br>
         <button v-on:click="GetCityWeather">Submit</button>
-        <span>{{response}}</span>
+        <br><br>
+        <!-- Only display response if there is one -->
+        <div id="data" v-if="Object.entries(response).length !== 0">
+          <!-- Display error message if error returned from server -->
+          <span id="error" v-if="response.hasOwnProperty('error')"> 
+            Oops!
+            <br>
+            WheatherMan couldn't find that one...
+            <br>
+            Please enter a valid city.
+          </span>
+          <!-- Display data returned from server -->
+          <span id="error" v-else="!response.hasOwnProperty('error')"> 
+            City: {{city}}
+          </span>
+        </div>
     </div>
   </body>
   <script type = "text/JavaScript">
@@ -21,6 +36,10 @@
     el:"#app",
     data:{
         city: "",
+        bringUmbrella: false,
+        bringMask: false,
+        typeOfWeather: "",
+        next4Days: {},
         response: {},
     },
     methods:{

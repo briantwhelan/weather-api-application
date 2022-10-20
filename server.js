@@ -31,6 +31,7 @@ app.get("/weather/:city", getForecast);
 // Start the server.
 app.listen(port, () => console.log(`Listening on port ${port}...`));
 
+// Get the forecast to return to the client.
 async function getForecast(req, res) {
   let city = req.params.city;
   console.log(`Request received for ${city}.`);
@@ -52,6 +53,7 @@ async function getForecast(req, res) {
   }
 }
 
+// Get coordinates of given city using OpenWeather Geocoder API.
 async function getCoordinates(city) {
   const response = await fetch(
     `http://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${process.env.API_KEY}`
@@ -60,18 +62,95 @@ async function getCoordinates(city) {
   return [data[0].lat, data[0].lon];
 }
 
+// Get simplified 4-day weather forecast.
 async function get4DayWeatherForecast(coords) {
-  const forecast = await get5Day3HourForecast(coords);
+  const weatherForecast = await get5Day3HourWeatherForecast(coords);
+  // console.log(weatherForecast);
   let weatherData = [];
-  Object.keys(forecast.list).forEach(function (index) {
-    let interval = forecast.list[index];
+  let previousTime = weatherForecast[0].time;
+
+  let index = 0;
+  console.log(
+    "Number of weather forecast entries: ",
+    Object.keys(weatherForecast).length
+  );
+  while (index < Object.keys(weatherForecast).length) {
+    console.log(`index: ${index}`);
+    let sameDate = true;
+    let temperatureSum = 0;
+    let windSpeedSum = 0;
+    let rainfallLevelSum = 0;
+    let count = 0;
+    let rainfallLevelCount = 0;
+    let currentTime = 0;
+    while (sameDate && index + count < Object.keys(weatherForecast).length) {
+      //console.log(`weatherForecast[${index}]: ${weatherForecast[index].time}`);
+      let interval = weatherForecast[index + count];
+      currentTime = interval.time;
+      //console.log(`PreviousDate: ${new Date(previousTime * 1000)}`);
+      //console.log(`CurrentDate: ${new Date(currentTime * 1000)}`);
+      if (isSameDate(previousTime, currentTime)) {
+        //console.log(`Same Dates`);
+        console.log(`Day of Week: ${getDayOfWeek(currentTime)}`);
+        console.log(`temp: ${interval.temperature}`);
+        console.log(`ws: ${interval.windSpeed}`);
+        console.log(`rl: ${interval.rainfallLevel}`);
+        temperatureSum += interval.temperature;
+        windSpeedSum += interval.windSpeed;
+        if (interval.rainfallLevel !== undefined) {
+          rainfallLevelSum += interval.rainfallLevel;
+          rainfallLevelCount++;
+        }
+        count++;
+      } else {
+        //console.log(`Different Dates`);
+        sameDate = false;
+      }
+      //console.log(`Inner Count: ${count}`);
+      //console.log(`Inner Index: ${index}`);
+    }
+    //console.log(`Day of Week: ${getDayOfWeek(previousTime)}`);
+    console.log(`Sum temp: ${temperatureSum}`);
+    console.log(`Sum ws: ${windSpeedSum}`);
+    console.log(`Sum rl: ${rainfallLevelSum}`);
+    console.log(
+      `index: ${index} count:${count} rainfallLevelCount: ${rainfallLevelCount}`
+    );
+    console.log(`Average temp: ${temperatureSum / count}`);
+    console.log(`Average ws: ${windSpeedSum / count}`);
+    console.log(`Average rl: ${rainfallLevelSum / rainfallLevelCount}`);
+    weatherData.push({
+      day: getDayOfWeek(previousTime),
+      temperature:
+        Math.round(convertKelvinToCelcius(temperatureSum / count) * 100) / 100,
+      windSpeed: Math.round((windSpeedSum / count) * 100) / 100,
+      rainfallLevel:
+        Math.round((rainfallLevelSum / rainfallLevelCount) * 100) / 100,
+    });
+    console.log(`length: ${Object.keys(weatherData).length}\n`);
+    previousTime = currentTime;
+    index += count;
+  }
+  console.log("WeatherData: ", weatherData);
+  return weatherForecast;
+}
+
+// Get 5-day weather forecast in 3-hour increments using OpenWeather 5-Day/3-Hour Forecast API.
+async function get5Day3HourWeatherForecast(coords) {
+  const response = await fetch(
+    `http://api.openweathermap.org/data/2.5/forecast?lat=${coords[0]}&lon=${coords[1]}&appid=${process.env.API_KEY}`
+  );
+  const data = await response.json();
+
+  let weatherData = [];
+  Object.keys(data.list).forEach(function (index) {
+    let interval = data.list[index];
     let rainfallLevel = interval.rain;
     if (rainfallLevel !== undefined) {
       rainfallLevel = interval.rain["3h"];
     }
     weatherData.push({
       time: interval.dt,
-      weatherDescription: interval.weather.main,
       temperature: interval.main.temp,
       windSpeed: interval.wind.speed,
       rainfallLevel: rainfallLevel,
@@ -80,31 +159,122 @@ async function get4DayWeatherForecast(coords) {
   return weatherData;
 }
 
-async function get5Day3HourForecast(coords) {
-  const response = await fetch(
-    `http://api.openweathermap.org/data/2.5/forecast?lat=${coords[0]}&lon=${coords[1]}&appid=${process.env.API_KEY}`
-  );
-  const data = await response.json();
-  return data;
+// Convert from Kelvin to degrees Celcius.
+function convertKelvinToCelcius(kelvin) {
+  return kelvin - 273.15;
 }
 
+// Get simplified 5-day air pollution forecast.
 async function get5DayAirPollutionForecast(coords) {
-  const airPollution = await getAirPollution(coords);
+  const airPollutionForecast = await get5Day1HourAirPollutionForecast(coords);
 
   let airPollutionData = [];
-  Object.keys(airPollution.list).forEach(function (index) {
-    let interval = airPollution.list[index];
+  let previousTime = airPollutionForecast[0].time;
+  let index = 0;
+  console.log(
+    "Number of air pollution entries: ",
+    Object.keys(airPollutionForecast).length
+  );
+  while (index < Object.keys(airPollutionForecast).length) {
+    console.log(`index: ${index}`);
+    let sameDate = true;
+    let pm2_5Sum = 0;
+    let count = 0;
+    let currentTime = 0;
+    while (
+      sameDate &&
+      index + count < Object.keys(airPollutionForecast).length
+    ) {
+      //console.log(`airPollution[${index}]: ${airPollution[index].time}`);
+      let interval = airPollutionForecast[index + count];
+      currentTime = interval.time;
+      //console.log(`PreviousDate: ${new Date(previousTime * 1000)}`);
+      //console.log(`CurrentDate: ${new Date(currentTime * 1000)}`);
+      if (isSameDate(previousTime, currentTime)) {
+        //console.log(`Same Dates`);
+        console.log(`Day of Week: ${getDayOfWeek(currentTime)}`);
+        console.log(`pm2_5: ${interval.pm2_5}`);
+        pm2_5Sum += interval.pm2_5;
+        count++;
+      } else {
+        //console.log(`Different Dates`);
+        sameDate = false;
+      }
+      //console.log(`Inner Count: ${count}`);
+      //console.log(`Inner Index: ${index}`);
+    }
+    //console.log(`Day of Week: ${getDayOfWeek(previousTime)}`);
+    console.log(`Sum pm2_5: ${pm2_5Sum}`);
+    console.log(`index: ${index} count:${count}`);
+    console.log(`Average pm2_5: ${pm2_5Sum / count}`);
+    airPollutionData.push({
+      day: getDayOfWeek(previousTime),
+      pm2_5: pm2_5Sum / count,
+    });
+    console.log(`length: ${Object.keys(airPollutionData).length}\n`);
+    previousTime = currentTime;
+    index += count;
+  }
+  console.log("AirPollutionData: ", airPollutionData);
+  return airPollutionData;
+}
+
+// Get 5-day air pollution forecast in 1-hour increments using OpenWeather Air Pollution API.
+async function get5Day1HourAirPollutionForecast(coords) {
+  const response = await fetch(
+    `http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${coords[0]}&lon=${coords[1]}&appid=${process.env.API_KEY}`
+  );
+  const data = await response.json();
+  let airPollutionData = [];
+  Object.keys(data.list).forEach(function (index) {
+    let interval = data.list[index];
     airPollutionData.push({
       time: interval.dt,
       pm2_5: interval.components.pm2_5,
     });
   });
+
+  return airPollutionData;
 }
 
-async function getAirPollution(coords) {
-  const response = await fetch(
-    `http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${coords[0]}&lon=${coords[1]}&appid=${process.env.API_KEY}`
+// Check whether two UNIX timestamps are the same date.
+function isSameDate(time1, time2) {
+  let date1 = new Date(time1 * 1000);
+  let date2 = new Date(time2 * 1000);
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
   );
-  const data = await response.json();
-  return data;
+}
+
+// Get day of week from UNIX timestamp
+function getDayOfWeek(time) {
+  let day = "";
+  let date = new Date(time * 1000);
+  switch (date.getDay()) {
+    case 0:
+      day = "Sunday";
+      break;
+    case 1:
+      day = "Monday";
+      break;
+    case 2:
+      day = "Tuesday";
+      break;
+    case 3:
+      day = "Wednesday";
+      break;
+    case 4:
+      day = "Thursday";
+      break;
+    case 5:
+      day = "Friday";
+      break;
+    case 6:
+      day = "Saturday";
+      break;
+  }
+
+  return day;
 }
