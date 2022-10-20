@@ -3,7 +3,6 @@
 // Require dependencies.
 const express = require("express");
 const fetch = require("node-fetch");
-//const cors = require("cors");
 const path = require("path");
 
 // Use dotenv package to import API key from .env file.
@@ -13,11 +12,8 @@ const apiKey = `${process.env.API_KEY}`;
 // Create express app.
 const app = express();
 const port = 5500;
-//app.use(express.static("public"));
 let publicPath = path.resolve(__dirname, "public");
-// console.log(publicPath);
 app.use(express.static(publicPath));
-//app.use(cors());
 
 // Register routes.
 app.get("/", (req, res) => {
@@ -47,6 +43,7 @@ async function getForecast(req, res) {
       weather: fourDayWeatherForecast,
       airPollution: fiveDayAirPollutionForecast,
     };
+    console.log(forecast);
     res.status(200).json(forecast);
   } catch (e) {
     res.status(400).json({ error: "Bad Request." });
@@ -65,17 +62,10 @@ async function getCoordinates(city) {
 // Get simplified 4-day weather forecast.
 async function get4DayWeatherForecast(coords) {
   const weatherForecast = await get5Day3HourWeatherForecast(coords);
-  // console.log(weatherForecast);
   let weatherData = [];
   let previousTime = weatherForecast[0].time;
-
   let index = 0;
-  console.log(
-    "Number of weather forecast entries: ",
-    Object.keys(weatherForecast).length
-  );
   while (index < Object.keys(weatherForecast).length) {
-    console.log(`index: ${index}`);
     let sameDate = true;
     let temperatureSum = 0;
     let windSpeedSum = 0;
@@ -84,17 +74,9 @@ async function get4DayWeatherForecast(coords) {
     let rainfallLevelCount = 0;
     let currentTime = 0;
     while (sameDate && index + count < Object.keys(weatherForecast).length) {
-      //console.log(`weatherForecast[${index}]: ${weatherForecast[index].time}`);
       let interval = weatherForecast[index + count];
       currentTime = interval.time;
-      //console.log(`PreviousDate: ${new Date(previousTime * 1000)}`);
-      //console.log(`CurrentDate: ${new Date(currentTime * 1000)}`);
       if (isSameDate(previousTime, currentTime)) {
-        //console.log(`Same Dates`);
-        console.log(`Day of Week: ${getDayOfWeek(currentTime)}`);
-        console.log(`temp: ${interval.temperature}`);
-        console.log(`ws: ${interval.windSpeed}`);
-        console.log(`rl: ${interval.rainfallLevel}`);
         temperatureSum += interval.temperature;
         windSpeedSum += interval.windSpeed;
         if (interval.rainfallLevel !== undefined) {
@@ -103,22 +85,9 @@ async function get4DayWeatherForecast(coords) {
         }
         count++;
       } else {
-        //console.log(`Different Dates`);
         sameDate = false;
       }
-      //console.log(`Inner Count: ${count}`);
-      //console.log(`Inner Index: ${index}`);
     }
-    //console.log(`Day of Week: ${getDayOfWeek(previousTime)}`);
-    console.log(`Sum temp: ${temperatureSum}`);
-    console.log(`Sum ws: ${windSpeedSum}`);
-    console.log(`Sum rl: ${rainfallLevelSum}`);
-    console.log(
-      `index: ${index} count:${count} rainfallLevelCount: ${rainfallLevelCount}`
-    );
-    console.log(`Average temp: ${temperatureSum / count}`);
-    console.log(`Average ws: ${windSpeedSum / count}`);
-    console.log(`Average rl: ${rainfallLevelSum / rainfallLevelCount}`);
     weatherData.push({
       day: getDayOfWeek(previousTime),
       temperature:
@@ -127,12 +96,10 @@ async function get4DayWeatherForecast(coords) {
       rainfallLevel:
         Math.round((rainfallLevelSum / rainfallLevelCount) * 100) / 100,
     });
-    console.log(`length: ${Object.keys(weatherData).length}\n`);
     previousTime = currentTime;
     index += count;
   }
-  console.log("WeatherData: ", weatherData);
-  return weatherForecast;
+  return weatherData;
 }
 
 // Get 5-day weather forecast in 3-hour increments using OpenWeather 5-Day/3-Hour Forecast API.
@@ -167,16 +134,10 @@ function convertKelvinToCelcius(kelvin) {
 // Get simplified 5-day air pollution forecast.
 async function get5DayAirPollutionForecast(coords) {
   const airPollutionForecast = await get5Day1HourAirPollutionForecast(coords);
-
   let airPollutionData = [];
   let previousTime = airPollutionForecast[0].time;
   let index = 0;
-  console.log(
-    "Number of air pollution entries: ",
-    Object.keys(airPollutionForecast).length
-  );
   while (index < Object.keys(airPollutionForecast).length) {
-    console.log(`index: ${index}`);
     let sameDate = true;
     let pm2_5Sum = 0;
     let pm2_5Max = 0;
@@ -186,39 +147,24 @@ async function get5DayAirPollutionForecast(coords) {
       sameDate &&
       index + count < Object.keys(airPollutionForecast).length
     ) {
-      //console.log(`airPollution[${index}]: ${airPollution[index].time}`);
       let interval = airPollutionForecast[index + count];
       currentTime = interval.time;
-      //console.log(`PreviousDate: ${new Date(previousTime * 1000)}`);
-      //console.log(`CurrentDate: ${new Date(currentTime * 1000)}`);
       if (isSameDate(previousTime, currentTime)) {
-        //console.log(`Same Dates`);
-        console.log(`Day of Week: ${getDayOfWeek(currentTime)}`);
-        console.log(`pm2_5: ${interval.pm2_5}`);
         pm2_5Sum += interval.pm2_5;
         pm2_5Max = pm2_5Max < interval.pm2_5 ? interval.pm2_5 : pm2_5Max;
         count++;
       } else {
-        //console.log(`Different Dates`);
         sameDate = false;
       }
-      //console.log(`Inner Count: ${count}`);
-      //console.log(`Inner Index: ${index}`);
     }
-    //console.log(`Day of Week: ${getDayOfWeek(previousTime)}`);
-    console.log(`Sum pm2_5: ${pm2_5Sum}`);
-    console.log(`index: ${index} count:${count}`);
-    console.log(`Average pm2_5: ${pm2_5Sum / count}`);
     airPollutionData.push({
       day: getDayOfWeek(previousTime),
       pm2_5: Math.round((pm2_5Sum / count) * 100) / 100,
       max_pm2_5: pm2_5Max,
     });
-    console.log(`length: ${Object.keys(airPollutionData).length}\n`);
     previousTime = currentTime;
     index += count;
   }
-  console.log("AirPollutionData: ", airPollutionData);
   return airPollutionData;
 }
 
