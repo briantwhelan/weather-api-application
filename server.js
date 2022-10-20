@@ -179,6 +179,7 @@ async function get5DayAirPollutionForecast(coords) {
     console.log(`index: ${index}`);
     let sameDate = true;
     let pm2_5Sum = 0;
+    let pm2_5Max = 0;
     let count = 0;
     let currentTime = 0;
     while (
@@ -195,6 +196,7 @@ async function get5DayAirPollutionForecast(coords) {
         console.log(`Day of Week: ${getDayOfWeek(currentTime)}`);
         console.log(`pm2_5: ${interval.pm2_5}`);
         pm2_5Sum += interval.pm2_5;
+        pm2_5Max = pm2_5Max < interval.pm2_5 ? interval.pm2_5 : pm2_5Max;
         count++;
       } else {
         //console.log(`Different Dates`);
@@ -209,7 +211,8 @@ async function get5DayAirPollutionForecast(coords) {
     console.log(`Average pm2_5: ${pm2_5Sum / count}`);
     airPollutionData.push({
       day: getDayOfWeek(previousTime),
-      pm2_5: pm2_5Sum / count,
+      pm2_5: Math.round((pm2_5Sum / count) * 100) / 100,
+      max_pm2_5: pm2_5Max,
     });
     console.log(`length: ${Object.keys(airPollutionData).length}\n`);
     previousTime = currentTime;
@@ -233,7 +236,6 @@ async function get5Day1HourAirPollutionForecast(coords) {
       pm2_5: interval.components.pm2_5,
     });
   });
-
   return airPollutionData;
 }
 
@@ -275,6 +277,5 @@ function getDayOfWeek(time) {
       day = "Saturday";
       break;
   }
-
   return day;
 }
