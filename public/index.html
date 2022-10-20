@@ -12,7 +12,7 @@
         <p>Find out whether you should bring that umbrella (or that mask)...</p>
         <input v-model="city" placeholder="City">
         <br><br>
-        <button v-on:click="GetCityWeather">Submit</button>
+        <button v-on:click="GetForecast">Submit</button>
         <br><br>
         <!-- Only display response if there is one -->
         <div id="data" v-if="Object.entries(response).length !== 0">
@@ -22,12 +22,42 @@
             <br>
             WheatherMan couldn't find that one...
             <br>
-            Please enter a valid city.
+            Here's a joke instead :)
+            <!-- Get and display joke here -->
           </span>
           <!-- Display data returned from server -->
-          <span id="error" v-else="!response.hasOwnProperty('error')"> 
-            City: {{city}}
-          </span>
+          <div id="info" v-else="!response.hasOwnProperty('error')"> 
+            <span id="city">{{ city }}</span>
+            <p v-if="bringUmbrella">Might want to take the umbrella...</p>
+            <p v-else="!bringUmbrella">You won't need that umbrella...</p>
+            <p v-if="bringMask">and you will need that mask</p>
+            <p v-else="!bringMask">and you won't need that mask :)</p>
+            <table>
+              <tr>
+                <th v-for="forecast in response.weather">{{forecast.day}}</th>
+              </tr>
+              <tr>
+                <td v-for="forecast in response.weather">{{forecast.temperature}}°C</td>
+              </tr>
+              <tr>
+                <td v-for="forecast in response.weather">{{forecast.windSpeed}}m/s</td>
+              </tr>
+              <tr>
+                <template v-for="forecast in response.weather">
+                  <td v-if="forecast.rainfallLevel!==null">{{forecast.rainfallLevel}}mm</td>
+                  <td v-else="forecast.rainfallLevel===null">N/A</td>
+                </template>
+              </tr>
+            </table>
+            <table>
+              <tr>
+                <th v-for="forecast in response.airPollution">{{forecast.day}}</th>
+              </tr>
+              <tr>
+                <td v-for="forecast in response.airPollution">{{forecast.pm2_5}}μg/m3</td>
+              </tr>
+            </table>
+          </div>
         </div>
     </div>
   </body>
@@ -39,21 +69,20 @@
         bringUmbrella: false,
         bringMask: false,
         typeOfWeather: "",
-        next4Days: {},
         response: {},
     },
     methods:{
-        GetCityWeather : getCityWeather 
+        GetForecast : getForecast 
     }
     })
 
-    function getCityWeather (){
-        console.log("getCityWeather called")
+    function getForecast (){
         let prom = fetch("http://localhost:5500/weather/" + this.city)
         prom.then( response => response.json())
         .then (response =>
         { this.response = response
         })
     }
+
   </script>
 </html>
