@@ -19,8 +19,10 @@ app.use(express.static(publicPath));
 app.get("/", (req, res) => {
   res.status(200).send("WheatherMan running...");
 });
-app.get("/weather/", (req, res) => {
-  res.status(400).json({ error: "Bad Request." });
+app.get("/weather/", async (req, res) => {
+  console.log("Bad request.");
+  const joke = await getJoke();
+  res.status(400).json({ error: "Bad Request.", joke: joke });
 });
 app.get("/weather/:city", getForecast);
 
@@ -40,13 +42,16 @@ async function getForecast(req, res) {
     );
 
     let forecast = {
+      city: coords[2],
       weather: fourDayWeatherForecast,
       airPollution: fiveDayAirPollutionForecast,
     };
     console.log(forecast);
     res.status(200).json(forecast);
   } catch (e) {
-    res.status(400).json({ error: "Bad Request." });
+    console.log("Bad request.");
+    const joke = await getJoke();
+    res.status(400).json({ error: "Bad Request.", joke: joke });
   }
 }
 
@@ -56,7 +61,7 @@ async function getCoordinates(city) {
     `http://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${process.env.API_KEY}`
   );
   const data = await response.json();
-  return [data[0].lat, data[0].lon];
+  return [data[0].lat, data[0].lon, data[0].name];
 }
 
 // Get simplified 4-day weather forecast.
@@ -99,7 +104,7 @@ async function get4DayWeatherForecast(coords) {
     previousTime = currentTime;
     index += count;
   }
-  return weatherData;
+  return weatherData.slice(1, 5);
 }
 
 // Get 5-day weather forecast in 3-hour increments using OpenWeather 5-Day/3-Hour Forecast API.
@@ -165,7 +170,7 @@ async function get5DayAirPollutionForecast(coords) {
     previousTime = currentTime;
     index += count;
   }
-  return airPollutionData;
+  return airPollutionData.slice(1, 6);
 }
 
 // Get 5-day air pollution forecast in 1-hour increments using OpenWeather Air Pollution API.
@@ -183,6 +188,15 @@ async function get5Day1HourAirPollutionForecast(coords) {
     });
   });
   return airPollutionData;
+}
+
+// Get joke from Joke API.
+async function getJoke(coords) {
+  const response = await fetch(
+    `https://v2.jokeapi.dev/joke/Programming?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single`
+  );
+  const data = await response.json();
+  return data.joke;
 }
 
 // Check whether two UNIX timestamps are the same date.

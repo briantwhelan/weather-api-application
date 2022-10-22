@@ -3,62 +3,96 @@
   <head>
     <meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <link rel="icon" type="image/x-icon" href="../images/favicon.png">
+    <link rel="icon" type="image/x-icon" href="images/favicon.png">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <title>WheatherMan</title>
   </head>
   <body>
     <div id="app">
-        <h1>WheatherMan</h1>
-        <p>Find out whether you should bring that umbrella (or that mask)...</p>
-        <input v-model="city" placeholder="City">
+        <div id="header">
+          <img id="logo" src="images/logo.png" alt="WheatherMan">
+          <p>Find out whether you should bring that umbrella (or that mask)...</p>
+        </div>
+        <input id="textbox" v-model="city" placeholder="City">
         <br><br>
-        <button v-on:click="GetForecast">Submit</button>
+        <button id="submit" v-on:click="GetForecast">Submit</button>
         <br><br>
         <!-- Only display response if there is one -->
-        <div id="data" v-if="Object.entries(response).length !== 0">
-          <!-- Display error message if error returned from server -->
-          <span id="error" v-if="response.hasOwnProperty('error')"> 
-            Oops!
-            <br>
-            WheatherMan couldn't find that one...
-            <br>
-            Here's a joke instead :)
-            <!-- Get and display joke here -->
-          </span>
+        <div v-if="Object.entries(response).length !== 0">
+          <!-- Display error message with joke if error returned from server -->
+          <div v-if="response.hasOwnProperty('error')"> 
+            <div class="text" id="error">
+              Oops!
+              <br>
+              WheatherMan couldn't find that one...
+              <br>
+              Here's a joke instead :)
+            </div>
+            <br><br>
+            <div class="text">{{response.joke}}</div> 
+          </div>
           <!-- Display data returned from server -->
-          <div id="info" v-else="!response.hasOwnProperty('error')"> 
-            <span id="city">{{ city }}</span>
-            <p v-if="bringUmbrella">Might want to take the umbrella...</p>
-            <p v-else="!bringUmbrella">You won't need that umbrella...</p>
-            <p v-if="bringMask">and you will need that mask</p>
-            <p v-else="!bringMask">and you won't need that mask :)</p>
+          <div v-if="!response.hasOwnProperty('error')"> 
+            <div class="text">
+              <p id="city">{{response.city}}</p>
+              <p v-if="temperature!==''">You should pack for {{temperature}} weather...</p>
+              <p v-if="bringUmbrella">...and take an umbrella</p>
+              <p v-if="bringMask">...and bring a mask :)</p>
+            </div>
             <table>
               <tr>
+                <th></th>
                 <th v-for="forecast in response.weather">{{forecast.day}}</th>
               </tr>
               <tr>
+                <th>Temperature</th>
                 <td v-for="forecast in response.weather">{{forecast.temperature}}°C</td>
               </tr>
               <tr>
+                <th>Wind Speed</th>
                 <td v-for="forecast in response.weather">{{forecast.windSpeed}}m/s</td>
               </tr>
               <tr>
+                <th>Rainfall Level</th>
                 <template v-for="forecast in response.weather">
                   <td v-if="forecast.rainfallLevel!==null">{{forecast.rainfallLevel}}mm</td>
                   <td v-else="forecast.rainfallLevel===null">N/A</td>
                 </template>
               </tr>
             </table>
+            <br></br>
             <table>
               <tr>
+                <th></th>
                 <th v-for="forecast in response.airPollution">{{forecast.day}}</th>
               </tr>
               <tr>
-                <td v-for="forecast in response.airPollution">{{forecast.pm2_5}}μg/m3</td>
+                <th>Max PM2.5</th>
+                <td v-for="forecast in response.airPollution">{{forecast.max_pm2_5}}μg/m3</td>
               </tr>
             </table>
+            <br><br>
           </div>
         </div>
+    </div>
+    <!-- Code for background -->
+    <div id="background-wrap">
+      <div class="x1">
+          <div class="cloud"></div>
+      </div>
+      <div class="x2">
+          <div class="cloud"></div>
+      </div>
+      <div class="x3">
+          <div class="cloud"></div>
+      </div>
+      <div class="x4">
+          <div class="cloud"></div>
+      </div>
+      <div class="x5">
+          <div class="cloud"></div>
+      </div>
     </div>
   </body>
   <script type = "text/JavaScript">
@@ -66,9 +100,9 @@
     el:"#app",
     data:{
         city: "",
-        bringUmbrella: false,
-        bringMask: false,
-        typeOfWeather: "",
+        bringUmbrella: true,
+        bringMask: true,
+        temperature: "",
         response: {},
     },
     methods:{
@@ -76,13 +110,63 @@
     }
     })
 
+    // Get forecast from backend and set variables.
     function getForecast (){
-        let prom = fetch("http://localhost:5500/weather/" + this.city)
-        prom.then( response => response.json())
+        let promise = fetch("http://localhost:5500/weather/" + this.city)
+        promise.then( response => response.json())
         .then (response =>
         { this.response = response
+          this.bringUmbrella = determineIfUmbrellaRequired(response.weather);
+          this.bringMask = determineIfMaskRequired(response.airPollution);
+          this.temperature = determineTemperatures(response.weather);
         })
     }
 
+    // Determine if an umbrella will be required depending on the rainfall level.
+    function determineIfUmbrellaRequired(forecast) {
+      needUmbrella = false;
+      Object.keys(forecast).forEach(function (index) {
+        if (forecast[index].rainfallLevel > 1) {
+            needUmbrella = true;
+        }
+      });
+      return needUmbrella;
+    }
+
+    // Determine if a mask will be required depending on the air polution level.
+    function determineIfMaskRequired(forecast) {
+      needMask = false;
+      Object.keys(forecast).forEach(function (index) {
+        if (forecast[index].max_pm2_5 > 10) {
+          needMask = true;
+        }
+      });
+      return needMask;
+    }
+
+    // Determine temperatures over the next 4 days.
+    function determineTemperatures(forecast) {
+      cold = false;
+      mild = false;
+      hot = false;
+      Object.keys(forecast).forEach(function (index) {
+        temperature = forecast[index].temperature
+        if (forecast[index].temperature < 12) {
+          cold = true;
+        }
+        if (forecast[index].temperature >= 12 && forecast[index].temperature <= 24) {
+          mild = true;
+        }
+        if (forecast[index].temperature > 24) {
+          hot = true;
+        }
+      });
+      return (cold && mild && hot) ? "cold, mild and hot" : 
+            (cold && mild) ? "cold and mild" : 
+            (cold && hot) ? "cold and hot" : 
+            (mild && hot) ? "mild and hot" : 
+            (cold) ? "cold" : 
+            (mild) ? "mild" : "hot";
+    }
   </script>
 </html>
